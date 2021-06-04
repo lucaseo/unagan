@@ -168,9 +168,7 @@ dmypy.json
 **/data/
 **/experiments
 
-# model directory
-**/models/
-**/model/
+
 
 # Jetbrains
 .idea/
@@ -182,7 +180,10 @@ dmypy.json
 # zip file
 **.zip
 
-# training data
+# model related data
 **/training_data
+**/generated_samples
 
-
+# model directory
+**/models/
+**/model/
