@@ -82,3 +82,12 @@ Some generated audio samples can be found in:
 ```
 samples/
 ```
+
+
+
+
+## `+) Notes`
+
+1. In case of Mac OS user:
+    - 'ffmpeg' is required.
+    - Installation: `brew install ffmpeg`
