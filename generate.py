@@ -279,6 +279,7 @@ def main(args):
     # ### Vocoder ###
     vocoder_model_dir = f'models/{data_type}/vocoder/'
     sys.path.append(vocoder_model_dir)
+
     import modules
     if data_type == 'speech':
         vocoder_name = 'OriginalGenerator'
@@ -289,7 +290,11 @@ def main(args):
     vocoder.eval()
 
     vocoder_param_fp = os.path.join(vocoder_model_dir, 'params.pt')
-    vocoder.load_state_dict(torch.load(vocoder_param_fp))
+
+    if args.is_gpu:
+        vocoder.load_state_dict(torch.load(vocoder_param_fp))
+    else:
+        vocoder.load_state_dict(torch.load(vocoder_param_fp, map_location='cpu'))
 
     if gid >= 0:
         vocoder = vocoder.cuda(gid)
@@ -381,6 +386,12 @@ def parse_argument():
         dest='seed',
         default=123,
         help='Random seed. Default: 123'
+    )
+
+    parser.add_argument(
+        '--is_gpu',
+        default=False,
+        type=bool
     )
 
     args = parser.parse_args()
