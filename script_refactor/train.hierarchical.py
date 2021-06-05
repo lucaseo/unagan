@@ -25,6 +25,8 @@ from torch.nn.utils import spectral_norm
 
 torch.multiprocessing.set_sharing_strategy('file_system')
 
+import argparse
+
 
 class VocDataset(Dataset):
     def __init__(self, ids, path):
@@ -33,7 +35,7 @@ class VocDataset(Dataset):
 
     def __getitem__(self, index):
         id = self.metadata[index]
-        voc_fp = os.path.join(self.path, id, 'vocals.npy')
+        voc_fp = os.path.join(self.path, id+'.npy')
 
         voc = np.load(voc_fp)
 
@@ -47,10 +49,16 @@ def get_voc_datasets(path, feat_type, batch_size, va_samples):
 
     dataset_fp = os.path.join(path, f'dataset.pkl')
     in_dir = os.path.join(path, feat_type)
+    print(dataset_fp)
     with open(dataset_fp, 'rb') as f:
         dataset = pickle.load(f)
+    print(dataset)
+    print(in_dir)
+    print("* * * * *")
 
     dataset_ids = [x[0] for x in dataset]
+    print(dataset_ids)
+    print("* * * * *")
 
     random.seed(1234)
     random.shuffle(dataset_ids)
@@ -62,6 +70,8 @@ def get_voc_datasets(path, feat_type, batch_size, va_samples):
     va_dataset = VocDataset(va_ids, in_dir)
     num_tr = len(tr_dataset)
     num_va = len(va_dataset)
+    print(num_tr)
+    print(num_va)
 
     iterator_tr = DataLoader(
         tr_dataset,
@@ -85,7 +95,7 @@ def get_voc_datasets(path, feat_type, batch_size, va_samples):
 def validate():
     # Store random state
     cpu_rng_state_tr = torch.get_rng_state()
-    gpu_rng_state_tr = torch.cuda.get_rng_state()
+    # gpu_rng_state_tr = torch.cuda.get_rng_state()
 
     # Set random stae
     torch.manual_seed(123)
@@ -104,13 +114,14 @@ def validate():
 
             # voc.shape=(bs, feat_dim, num_frames)
             voc = batch
-            voc = voc.cuda()
+            # voc = voc.cuda()
             voc = (voc - mean) / std
 
             bs, _, nf = voc.size()
 
             # ### Train generator ###
-            z = torch.zeros((bs, z_dim, int(np.ceil(nf/z_total_scale_factor)))).normal_(0, 1).float().cuda()
+            # z = torch.zeros((bs, z_dim, int(np.ceil(nf/z_total_scale_factor)))).normal_(0, 1).float().cuda()
+            z = torch.zeros((bs, z_dim, int(np.ceil(nf / z_total_scale_factor)))).normal_(0, 1).float()
 
             fake_voc = netG(z)
 
@@ -149,7 +160,7 @@ def validate():
 
     # Restore rng state
     torch.set_rng_state(cpu_rng_state_tr)
-    torch.cuda.set_rng_state(gpu_rng_state_tr)
+    # torch.cuda.set_rng_state(gpu_rng_state_tr)
 
     return mean_losses_va
 
@@ -492,6 +503,11 @@ class Encoder(nn.Module):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--data_path', type=str, required=True)
+    args = parser.parse_args()
+    data_dir = args.data_path
+
     model_id = None
 
     if model_id is None:
@@ -507,7 +523,7 @@ if __name__ == '__main__':
     # Options
     base_out_dir = "./checkpoints/"
 
-    data_dir = './training_data/exp_data'
+    # data_dir = './training_data/exp_data'
 
     feat_dim = 80
     z_dim = 20
@@ -515,7 +531,7 @@ if __name__ == '__main__':
     z_scale_factors = [2, 2, 2, 2]
     z_total_scale_factor = np.prod(z_scale_factors)
 
-    num_va = 200
+    num_va = 2
 
     feat_type = 'mel'
 
@@ -566,12 +582,16 @@ if __name__ == '__main__':
     mean_fp = os.path.join(data_dir, f'mean.{feat_type}.npy')
     std_fp = os.path.join(data_dir, f'std.{feat_type}.npy')
 
-    mean = torch.from_numpy(np.load(mean_fp)).float().cuda().view(1, feat_dim, 1)
-    std = torch.from_numpy(np.load(std_fp)).float().cuda().view(1, feat_dim, 1)
+    # mean = torch.from_numpy(np.load(mean_fp)).float().cuda().view(1, feat_dim, 1)
+    # std = torch.from_numpy(np.load(std_fp)).float().cuda().view(1, feat_dim, 1)
+    mean = torch.from_numpy(np.load(mean_fp)).float().view(1, feat_dim, 1)
+    std = torch.from_numpy(np.load(std_fp)).float().view(1, feat_dim, 1)
 
     # Model
-    netG = NetG(feat_dim, z_dim, z_scale_factors).cuda()
-    netD = NetD(feat_dim).cuda()
+    # netG = NetG(feat_dim, z_dim, z_scale_factors).cuda()
+    # netD = NetD(feat_dim).cuda()
+    netG = NetG(feat_dim, z_dim, z_scale_factors)
+    netD = NetD(feat_dim)
     recorder = BEGANRecorder(lambda_k, init_k, gamma)
 
     # Optimizers
@@ -624,13 +644,14 @@ if __name__ == '__main__':
             # voc.shape=(bs, feat_dim, num_frames)
             voc = batch
 
-            voc = voc.cuda()
+            # voc = voc.cuda()
             voc = (voc - mean) / std
 
             bs, _, nf = voc.size()
 
             # ### Train generator ###
-            z = torch.zeros((bs, z_dim, int(np.ceil(nf/z_total_scale_factor)))).normal_(0, 1).float().cuda()
+            # z = torch.zeros((bs, z_dim, int(np.ceil(nf/z_total_scale_factor)))).normal_(0, 1).float().cuda()
+            z = torch.zeros((bs, z_dim, int(np.ceil(nf / z_total_scale_factor)))).normal_(0, 1).float()
 
             fake_voc = netG(z)
 
